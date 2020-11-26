@@ -1,4 +1,4 @@
-`changer` makes it easy to manage a `CHANGELOG.md` file.
+`changer` makes it easy to manage a `CHANGELOG.md` file.  It works in Nim projects and other languages, too.
 
 # Installation
 
@@ -19,7 +19,7 @@ Every time you want to add something to the changelog, make a new Markdown file 
   - `break-NAME.md`
   - `other-NAME.md`
 
-Use the tool to add a log for you:
+Use the tool to add a changelog entry:
 
   changer add
 
