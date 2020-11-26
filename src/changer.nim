@@ -182,6 +182,7 @@ var p = newParser("changer"):
       writeFile(changereadme, README)
 
   command "bump":
+    help "Combine pending changes into a new release."
     flag("-n", "--dryrun")
     arg("version", default = some(""), help = "Next version to use. If not given, auto-detect.")
     run:
