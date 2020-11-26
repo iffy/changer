@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.4.0"
+version       = "0.1.1"
 author        = "Matt Haggard"
 description   = "Makes doing changelogs easier"
 license       = "MIT"

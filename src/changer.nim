@@ -144,10 +144,13 @@ proc newChangeLogEntry(changesdir: string) =
     of Other: "other-"
   filename &= title & ".md"
   filename = changesdir / filename
-  writeFile(filename, "- \l")
   var editor = getEnv("EDITOR")
   if editor != "":
+    writeFile(filename, "\l")
     discard execCmd(editor & " " & filename) # TODO this probably isn't safe
+  else:
+    var description = readLineFromStdin("Describe change (this will show up in the changelog): ")
+    writeFile(filename, description & "\l")
   echo filename
 
 proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = true) =
