@@ -1,10 +1,8 @@
 import argparse
 import os
-import osproc
 import times
 import tables
 import strformat
-import rdstdin
 
 const README = slurp"../README.md"
 
@@ -122,21 +120,23 @@ proc sanitizeTitle(x: string): string =
 
 proc newChangeLogEntry(changesdir: string) =
   var changeType = Other
-  var val = readLineFromStdin("Change type:" &
-  "\r\n  [F]ix" &
-  "\r\n  [N]ew feature" &
-  "\r\n  [B]reaking change" &
-  "\r\n  [O]ther (default)" &
-  "\r\n  ? ").strip().toLower()
+  echo "Change type:" &
+  "\l  [F]ix" &
+  "\l  [N]ew feature" &
+  "\l  [B]reaking change" &
+  "\l  [O]ther (default)" &
+  "\l  ? "
+  var val = stdin.readLine().strip().toLower()
   case val
   of "f": changeType = Fix
   of "n": changeType = New
   of "b": changeType = Break
   else: changeType = Other
   
-  var title = readLineFromStdin("Short, unique keyword(s)? [Default current timestamp] ").sanitizeTitle()
-  if title == "":
-    title = now().format("yyyyMMdd-HHmmss")
+  echo "Describe change (this will show up in the changelog): "
+  var description = stdin.readLine()
+  var title = description.splitWhitespace(3)[0..^2].join(" ").sanitizeTitle()
+  title &= "-" & now().format("yyyyMMdd-HHmmss")
   var filename = case changeType
     of Fix: "fix-"
     of New: "new-"
@@ -144,13 +144,7 @@ proc newChangeLogEntry(changesdir: string) =
     of Other: "other-"
   filename &= title & ".md"
   filename = changesdir / filename
-  var editor = getEnv("EDITOR")
-  if editor != "":
-    writeFile(filename, "\l")
-    discard execCmd(editor & " " & filename) # TODO this probably isn't safe
-  else:
-    var description = readLineFromStdin("Describe change (this will show up in the changelog): ")
-    writeFile(filename, description & "\l")
+  writeFile(filename, description & "\l")
   echo filename
 
 proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = true) =
