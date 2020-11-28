@@ -13,7 +13,10 @@ jobs:
       matrix:
         nimversion: 
           - stable
+          - 1.4.0
           - 1.2.8
+          - 1.0.10
+          - 0.20.2
         os:
         - ubuntu-latest
         - macOS-latest

@@ -10,5 +10,5 @@ bin           = @["changer"]
 
 # Dependencies
 
-requires "nim >= 1.4.0"
+#requires "nim >= 1.2.8"
 requires "argparse >= 0.10.1"
