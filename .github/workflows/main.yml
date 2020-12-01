@@ -28,11 +28,12 @@ jobs:
         version: ${{ matrix.nimversion }}
     - name: Test
       run: |
+        nimble install -y
         nimble test
         nimble refresh
     - name: Install
       run: |
-        nimble install
+        nimble install -y
         printf "n\r\nsomechange\r\n" | changer add
         changer bump -n
         changer bump
