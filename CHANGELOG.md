@@ -1,3 +1,7 @@
+# v0.3.0 - 2020-12-01
+
+- **NEW:** You can now perform string replacements on each snippet via a config file. This allows you to do things like automatically add links to your issue tracker.
+
 # v0.2.0 - 2020-11-28
 
 - **NEW:** Added CI tests.
