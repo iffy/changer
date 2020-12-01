@@ -75,10 +75,11 @@ type Replacement = tuple
   by: string
 
 proc readReplacements(config: TomlValueRef): seq[Replacement] =
-  let r = config["replacement"]
-  if not r.isNil and r.kind == Array:
-    for elem in r.getElems():
-      result.add (elem["pattern"].getStr(), elem["replace"].getStr())
+  if config.hasKey("replacement"):
+    let r = config["replacement"]
+    if not r.isNil and r.kind == Array:
+      for elem in r.getElems():
+        result.add (elem["pattern"].getStr(), elem["replace"].getStr())
 
 proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): tuple[entry: string, version: string, filesToDelete: seq[string]] =
   ## Prepare the next changelog
