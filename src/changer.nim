@@ -1,10 +1,13 @@
 import argparse
 import os
-import times
-import tables
+import parsetoml
 import strformat
+import tables
+import times
+import regex
 
 const README = slurp"../README.md"
+const DEFAULT_CONFIG = slurp"../default.config.toml"
 
 type
   Version = tuple
@@ -66,10 +69,22 @@ proc updateNimbleFile(newversion: string, dryrun = true) =
       echo "updating ", path
       if not dryrun:
         path.writeFile(lines.join("\l"))
-      
+
+type Replacement = tuple
+  pattern: string
+  by: string
+
+proc readReplacements(config: TomlValueRef): seq[Replacement] =
+  if config.hasKey("replacement"):
+    let r = config["replacement"]
+    if not r.isNil and r.kind == Array:
+      for elem in r.getElems():
+        result.add (elem["pattern"].getStr(), elem["replace"].getStr())
 
 proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): tuple[entry: string, version: string, filesToDelete: seq[string]] =
   ## Prepare the next changelog
+  let config = parsetoml.parseFile(changesdir / "config.toml")
+  let replacements = config.readReplacements()
   var changes = {
     Other: newSeq[string](),
     Fix: newSeq[string](),
@@ -82,7 +97,10 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
     if filename.endsWith(".md") and "-" in filename:
       let parts = filename.split("-", 1)
       var changetype = parseEnum[ChangeType](parts[0], Other)
-      changes[changetype].add readFile(path).normalizeEntry(changetype)
+      var entry = readFile(path).normalizeEntry(changetype)
+      for (pattern, by) in replacements:
+        entry = entry.replace(re(pattern), by)
+      changes[changetype].add entry
       filesToDelete.add(path)
 
   var nextVersion = nextVersion
@@ -164,20 +182,32 @@ proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = 
   if dryrun:
     echo "DRY RUN - no files changed"
 
-var p = newParser("changer"):
+proc initDir(changesdir: string, changelogfile: string) =
+  if not fileExists(changelogfile):
+    echo "touch ", changelogfile
+    writeFile(changelogfile, "")
+  if not dirExists(changesdir):
+    echo "mkdir ", changesdir
+    createDir(changesdir)
+  let changereadme = changesdir / "README.md"
+  writeFile(changereadme, README)
+  echo "wrote ", changereadme
+  let config = changesdir / "config.toml"
+  if not fileExists(config):
+    writeFile(config, DEFAULT_CONFIG)
+    echo "wrote ", config
+
+var parser = newParser("changer"):
   help(README)
   option("-d", "--changes-dir", default = some("changes"))
   option("-f", "--changelog", default = some("CHANGELOG.md"))
   command "init":
     help("Create a new CHANGELOG.md file and changes/ directory")
     run:
-      if not fileExists(opts.parentOpts.changelog):
-        writeFile(opts.parentOpts.changelog, "")
-      if not dirExists(opts.parentOpts.changes_dir):
-        createDir(opts.parentOpts.changes_dir)
-      let changereadme = opts.parentOpts.changes_dir / "README.md"
-      writeFile(changereadme, README)
-
+      initDir(
+        changesdir = opts.parentOpts.changes_dir,
+        changelogfile = opts.parentOpts.changelog,
+      )
   command "bump":
     help "Combine pending changes into a new release."
     flag("-n", "--dryrun")
@@ -193,5 +223,10 @@ var p = newParser("changer"):
     help "Add a new changelog entry."
     run:
       newChangeLogEntry(opts.parentOpts.changes_dir)
+
+when defined(testmode):
+  proc runChanger*(args: varargs[string]) =
+    parser.run(toSeq(args))
+
 when isMainModule:
-  p.run()
+  parser.run()

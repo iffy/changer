@@ -12,3 +12,5 @@ bin           = @["changer"]
 
 requires "nim >= 1.2.8"
 requires "argparse >= 0.10.1"
+requires "regex >= 0.15.0"
+requires "parsetoml >= 0.5.0"
