@@ -108,7 +108,11 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
     nextVersion = changelogfile.getMostRecentVersion()
     var v = nextVersion.parseVersion()
     if changes[Break].len > 0:
-      v = v.incMajor()
+      if v.major == 0:
+        echo "WARNING: not incrementing from 0.x.x to 1.x.x -- the jump to 1.x.x must be explicitly chosen"
+        v = v.incMinor()
+      else:
+        v = v.incMajor()
     elif changes[Other].len > 0 or changes[New].len > 0:
       v = v.incMinor()
     elif changes[Fix].len > 0:
