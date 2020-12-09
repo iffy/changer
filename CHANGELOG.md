@@ -1,3 +1,7 @@
+# v0.4.0 - 2020-12-09
+
+- **NEW:** Changer won't automatically bump from 0.x.x to 1.x.x anymore
+
 # v0.3.0 - 2020-12-01
 
 - **NEW:** You can now perform string replacements on each snippet via a config file. This allows you to do things like automatically add links to your issue tracker.
