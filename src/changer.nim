@@ -141,6 +141,9 @@ proc sanitizeTitle(x: string): string =
       discard
 
 proc newChangeLogEntry(changesdir: string) =
+  if not changesdir.dirExists:
+    echo "ERROR: Could not find changes dir: " & changesdir
+    quit(1)
   var changeType = Other
   echo "Change type:" &
   "\l  [F]ix" &
