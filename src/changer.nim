@@ -24,7 +24,7 @@ proc getMostRecentVersion(changelogfile: string): string =
   ## Read the current CHANGELOG.md for the most recent version
   let firstline = readFile(changelogfile).strip().splitLines()[0]
   if firstline == "":
-    return "0.1.0" # no changelog
+    return "0.0.0" # no changelog
   else:
     return firstline.split(" ")[1].substr(1)
 
@@ -116,7 +116,10 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
     elif changes[Other].len > 0 or changes[New].len > 0:
       v = v.incMinor()
     elif changes[Fix].len > 0:
-      v = v.incPatch()
+      if v == (0,0,0):
+        v = v.incMinor()
+      else:
+        v = v.incPatch()
     else:
       v = v.incMinor()
     nextVersion = $v
