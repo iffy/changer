@@ -1,3 +1,7 @@
+# v0.4.1 - 2020-12-09
+
+- **FIX:** `changer add` fails immediately if there's no changes/ directory (instead of failing at the end).
+
 # v0.4.0 - 2020-12-09
 
 - **NEW:** Changer won't automatically bump from 0.x.x to 1.x.x anymore

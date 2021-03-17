@@ -3,7 +3,7 @@
 # Installation
 
 ```
-nimble install https://github.com/iffy/changer
+nimble install changer
 ```
 
 # Configuration
