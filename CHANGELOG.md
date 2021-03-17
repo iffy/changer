@@ -1,3 +1,7 @@
+# v0.4.2 - 2021-03-17
+
+- **FIX:** When creating the CHANGELOG for the first time, always choose v0.1.0
+
 # v0.4.1 - 2020-12-09
 
 - **FIX:** `changer add` fails immediately if there's no changes/ directory (instead of failing at the end).
