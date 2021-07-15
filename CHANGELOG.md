@@ -1,3 +1,7 @@
+# v0.5.0 - 2021-07-14
+
+- **NEW:** Added 'changer next-version' to show what it will choose as the next version.
+
 # v0.4.2 - 2021-03-17
 
 - **FIX:** When creating the CHANGELOG for the first time, always choose v0.1.0
