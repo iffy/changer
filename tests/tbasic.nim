@@ -3,6 +3,7 @@ import os
 import times
 import strutils
 import random
+import json
 randomize()
 
 import changer
@@ -36,6 +37,34 @@ replace = "[#$1](link:$1)"
     runChanger "bump"
     let guts = readFile("CHANGELOG.md")
     check "Hi [#45](link:45)!" in guts
+
+test "update_nimble":
+  tmpdir:
+    runChanger "init"
+    writeFile("changes"/"config.toml", """
+update_nimble = true
+    """)
+    writeFile("changes"/"fix-something.md", "Hi")
+    writeFile("something.nimble", "version       = \"0.0.0\"")
+    runChanger "bump"
+    let guts = readFile("something.nimble")
+    check "0.1.0" in guts
+
+test "update_package_json":
+  tmpdir:
+    runChanger "init"
+    writeFile("changes"/"config.toml", """
+update_package_json = true
+    """)
+    writeFile("changes"/"fix-thing.md", "thing")
+    writeFile("package.json", """
+{
+  "version": "0.0.0"
+}
+""")
+    runChanger "bump"
+    let guts = readFile("package.json").parseJson
+    check guts["version"].getStr() == "0.1.0"
 
 suite "initial version 0.1.0":
   test "fix":
