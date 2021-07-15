@@ -73,6 +73,21 @@ proc updateNimbleFile(newversion: string, dryrun = true) =
       if not dryrun:
         path.writeFile(lines.join("\l"))
 
+proc updatePackageJsonFile(newversion: string, dryrun = true) =
+  let path = "package.json"
+  if path.fileExists:
+    var lines = path.readFile().splitLines()
+    for i in 0..<lines.len:
+      var line = lines[i]
+      if "\"version\":" in line:
+        var parts = line.split("\"")
+        parts[3] = newversion
+        lines[i] = parts.join("\"")
+        break
+    echo "updating ", path
+    if not dryrun:
+      path.writeFile(lines.join("\l"))
+
 type Replacement = tuple
   pattern: string
   by: string
@@ -201,7 +216,11 @@ proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = 
     if not dryrun:
       removeFile(f)
     echo "rm ", f
-  updateNimbleFile(next.version, dryrun)
+  let config = parsetoml.parseFile(changesdir / "config.toml")
+  if config["update_nimble"].getBool(false):
+    updateNimbleFile(next.version, dryrun)
+  if config["update_package_json"].getBool(false):
+    updatePackageJsonFile(next.version, dryrun)
   echo "ok -> v", next.version
   if dryrun:
     echo "DRY RUN - no files changed"
