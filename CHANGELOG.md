@@ -1,3 +1,7 @@
+# v0.6.2 - 2021-07-15
+
+- **FIX:** Changed default config.toml to correct order for global configuration options
+
 # v0.6.1 - 2021-07-15
 
 - **FIX:** Changer no longer fails if the new `update_package_json` or `update_nimble` config variables are absent.

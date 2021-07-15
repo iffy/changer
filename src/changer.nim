@@ -218,8 +218,10 @@ proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = 
     echo "rm ", f
   let config = parsetoml.parseFile(changesdir / "config.toml")
   if config{"update_nimble"}.getBool(false):
+    echo "attempting to update .nimble file..."
     updateNimbleFile(next.version, dryrun)
   if config{"update_package_json"}.getBool(false):
+    echo "attempting to update package.json..."
     updatePackageJsonFile(next.version, dryrun)
   echo "ok -> v", next.version
   if dryrun:
