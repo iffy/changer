@@ -1,3 +1,7 @@
+# v0.6.1 - 2021-07-15
+
+- **FIX:** Changer no longer fails if the new `update_package_json` or `update_nimble` config variables are absent.
+
 # v0.6.0 - 2021-07-14
 
 
