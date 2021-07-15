@@ -1,3 +1,6 @@
+# v0.6.0 - 2021-07-14
+
+
 # v0.5.0 - 2021-07-14
 
 - **NEW:** Added 'changer next-version' to show what it will choose as the next version.
