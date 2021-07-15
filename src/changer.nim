@@ -19,6 +19,9 @@ type
     New = "new"
     Fix = "fix"
     Other = "other"
+  ChangeData = tuple
+    changes: Table[ChangeType, seq[string]]
+    changefiles: seq[string]
 
 proc getMostRecentVersion(changelogfile: string): string =
   ## Read the current CHANGELOG.md for the most recent version
@@ -81,8 +84,7 @@ proc readReplacements(config: TomlValueRef): seq[Replacement] =
       for elem in r.getElems():
         result.add (elem["pattern"].getStr(), elem["replace"].getStr())
 
-proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): tuple[entry: string, version: string, filesToDelete: seq[string]] =
-  ## Prepare the next changelog
+proc slurpChanges(changesdir: string): ChangeData =
   let config = parsetoml.parseFile(changesdir / "config.toml")
   let replacements = config.readReplacements()
   var changes = {
@@ -91,7 +93,7 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
     Break: newSeq[string](),
     New: newSeq[string](),
   }.toTable()
-  var filesToDelete: seq[string]
+  var filesToDelete = newSeq[string]()
   for (kind, path) in walkDir(changesdir):
     var filename = path.extractFilename
     if filename.endsWith(".md") and "-" in filename:
@@ -102,27 +104,39 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
         entry = entry.replace(re(pattern), by)
       changes[changetype].add entry
       filesToDelete.add(path)
+  return (changes: changes, changefiles: filesToDelete)
+
+proc computeNextVersion(changesdir: string, changelogfile: string): string =
+  ## Compute the next version based solely on pending changes
+  let changedata = changesdir.slurpChanges()
+  let changes = changedata.changes
+  var v = changelogfile.getMostRecentVersion().parseVersion()
+  if changes[Break].len > 0:
+    if v.major == 0:
+      v = v.incMinor()
+    else:
+      v = v.incMajor()
+  elif changes[Other].len > 0 or changes[New].len > 0:
+    v = v.incMinor()
+  elif changes[Fix].len > 0:
+    if v == (0,0,0):
+      v = v.incMinor()
+    else:
+      v = v.incPatch()
+  else:
+    v = v.incMinor()
+  result = $v
+
+proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): tuple[entry: string, version: string, filesToDelete: seq[string]] =
+  ## Prepare the next changelog
+  let config = parsetoml.parseFile(changesdir / "config.toml")
+  let replacements = config.readReplacements()
+  let changedata = changesdir.slurpChanges()
+  let changes = changedata.changes
 
   var nextVersion = nextVersion
   if nextVersion == "":
-    nextVersion = changelogfile.getMostRecentVersion()
-    var v = nextVersion.parseVersion()
-    if changes[Break].len > 0:
-      if v.major == 0:
-        echo "WARNING: not incrementing from 0.x.x to 1.x.x -- the jump to 1.x.x must be explicitly chosen"
-        v = v.incMinor()
-      else:
-        v = v.incMajor()
-    elif changes[Other].len > 0 or changes[New].len > 0:
-      v = v.incMinor()
-    elif changes[Fix].len > 0:
-      if v == (0,0,0):
-        v = v.incMinor()
-      else:
-        v = v.incPatch()
-    else:
-      v = v.incMinor()
-    nextVersion = $v
+    nextVersion = computeNextVersion(changesdir, changelogfile)
   
   let date = now().format("yyyy-MM-dd")
   var lines: seq[string]
@@ -131,7 +145,7 @@ proc prepareNext(changesdir: string, changelogfile: string, nextVersion = ""): t
     for item in changes[kind]:
       lines.add(item)
   lines.add("\n")
-  return (lines.join("\l"), nextVersion, filesToDelete)
+  return (lines.join("\l"), nextVersion, changedata.changefiles)
 
 proc sanitizeTitle(x: string): string =
   for c in x:
@@ -228,6 +242,13 @@ var parser = newParser("changer"):
         opts.parentOpts.changelog,
         opts.version,
         opts.dryrun,
+      )
+  command "next-version":
+    help "Print out the next computed version based on pending changes."
+    run:
+      echo computeNextVersion(
+        opts.parentOpts.changes_dir,
+        opts.parentOpts.changelog,
       )
   command "add":
     help "Add a new changelog entry."

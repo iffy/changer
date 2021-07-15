@@ -37,7 +37,6 @@ replace = "[#$1](link:$1)"
     let guts = readFile("CHANGELOG.md")
     check "Hi [#45](link:45)!" in guts
 
-
 suite "initial version 0.1.0":
   test "fix":
     tmpdir:
