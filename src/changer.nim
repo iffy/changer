@@ -271,6 +271,12 @@ var parser = newParser("changer"):
         opts.parentOpts.changes_dir,
         opts.parentOpts.changelog,
       )
+  command "current-version":
+    help "Print out the current version based on the CHANGELOG file"
+    run:
+      echo getMostRecentVersion(
+        opts.parentOpts.changelog,
+      )
   command "add":
     help "Add a new changelog entry."
     run:

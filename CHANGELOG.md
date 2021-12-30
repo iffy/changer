@@ -1,3 +1,7 @@
+# v0.7.0 - 2021-12-29
+
+- **NEW:** Added `current-version` command.
+
 # v0.6.2 - 2021-07-15
 
 - **FIX:** Changed default config.toml to correct order for global configuration options
