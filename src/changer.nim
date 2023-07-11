@@ -1,13 +1,33 @@
 import argparse
-import os
 import parsetoml
-import strformat
-import tables
-import times
 import regex
+import std/os
+import std/strformat
+import std/tables
+import std/times
 
 const README = slurp"../README.md"
 const DEFAULT_CONFIG = slurp"../default.config.toml"
+
+when defined(testmode):
+  var lastout = ""
+  var lasterr = ""
+  proc lastStdout*: string =
+    result = lastout
+    lastout = ""
+  proc lastStderr*: string =
+    result = lasterr
+    lasterr = ""
+
+template echoOut(x: string) =
+  when defined(testmode):
+    lastout &= x & "\n"
+  echo x
+
+template echoErr(x: string) =
+  when defined(testmode):
+    lasterr &= x & "\n"
+  stderr.write(x & "\n")
 
 type
   Version = tuple
@@ -69,7 +89,7 @@ proc updateNimbleFile(newversion: string, dryrun = true) =
           let parts = line.split("\"")
           lines[i] = parts[0] & '"' & newversion & '"'
           break
-      echo "updating ", path
+      echoErr "updating " & path
       if not dryrun:
         path.writeFile(lines.join("\l"))
 
@@ -84,7 +104,7 @@ proc updatePackageJsonFile(newversion: string, dryrun = true) =
         parts[3] = newversion
         lines[i] = parts.join("\"")
         break
-    echo "updating ", path
+    echoErr "updating " & path
     if not dryrun:
       path.writeFile(lines.join("\l"))
 
@@ -174,10 +194,10 @@ proc sanitizeTitle(x: string): string =
 
 proc newChangeLogEntry(changesdir: string) =
   if not changesdir.dirExists:
-    echo "ERROR: Could not find changes dir: " & changesdir
+    echoErr "ERROR: Could not find changes dir: " & changesdir
     quit(1)
   var changeType = Other
-  echo "Change type:" &
+  echoErr "Change type:" &
   "\l  [F]ix" &
   "\l  [N]ew feature" &
   "\l  [B]reaking change" &
@@ -190,7 +210,7 @@ proc newChangeLogEntry(changesdir: string) =
   of "b": changeType = Break
   else: changeType = Other
   
-  echo "Describe change (this will show up in the changelog): "
+  echoErr "Describe change (this will show up in the changelog): "
   var description = stdin.readLine()
   var title = description.splitWhitespace(3)[0..^2].join(" ").sanitizeTitle()
   title &= "-" & now().format("yyyyMMdd-HHmmss")
@@ -202,45 +222,55 @@ proc newChangeLogEntry(changesdir: string) =
   filename &= title & ".md"
   filename = changesdir / filename
   writeFile(filename, description & "\l")
-  echo filename
+  echoErr filename
 
 proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = true) =
   let next = prepareNext(changesdir, changelogfile, nextVersion)
-  echo next.entry
+  echoOut next.entry
   var guts = readFile(changelogfile)
   guts = next.entry & guts
   if not dryrun:
     writeFile(changelogfile, guts)
-  echo "updating ", changelogfile, " ..."
+  echoErr "updating " & changelogfile & " ..."
   for f in next.filesToDelete:
     if not dryrun:
       removeFile(f)
-    echo "rm ", f
+    echoErr "rm " & f
   let config = parsetoml.parseFile(changesdir / "config.toml")
   if config{"update_nimble"}.getBool(false):
-    echo "attempting to update .nimble file..."
+    echoErr "attempting to update .nimble file..."
     updateNimbleFile(next.version, dryrun)
   if config{"update_package_json"}.getBool(false):
-    echo "attempting to update package.json..."
+    echoErr "attempting to update package.json..."
     updatePackageJsonFile(next.version, dryrun)
-  echo "ok -> v", next.version
+  echoErr "ok -> v" & next.version
   if dryrun:
-    echo "DRY RUN - no files changed"
+    echoErr "DRY RUN - no files changed"
+
+proc show(changelogfile: string, toshow = 1): string =
+  ## Show the top `toshow` entried from the changelog
+  var left = toshow
+  for line in open(changelogfile).lines():
+    if line.startsWith("#"):
+      left.dec()
+      if left < 0:
+        break
+    result.add(line & "\n")
 
 proc initDir(changesdir: string, changelogfile: string) =
   if not fileExists(changelogfile):
-    echo "touch ", changelogfile
+    echoErr "touch " & changelogfile
     writeFile(changelogfile, "")
   if not dirExists(changesdir):
-    echo "mkdir ", changesdir
+    echoErr "mkdir " & changesdir
     createDir(changesdir)
   let changereadme = changesdir / "README.md"
   writeFile(changereadme, README)
-  echo "wrote ", changereadme
+  echoErr "wrote " & changereadme
   let config = changesdir / "config.toml"
   if not fileExists(config):
     writeFile(config, DEFAULT_CONFIG)
-    echo "wrote ", config
+    echoOut "wrote " & config
 
 var parser = newParser("changer"):
   help(README)
@@ -267,15 +297,23 @@ var parser = newParser("changer"):
   command "next-version":
     help "Print out the next computed version based on pending changes."
     run:
-      echo computeNextVersion(
+      echoOut computeNextVersion(
         opts.parentOpts.changes_dir,
         opts.parentOpts.changelog,
       )
   command "current-version":
     help "Print out the current version based on the CHANGELOG file"
     run:
-      echo getMostRecentVersion(
+      echoOut getMostRecentVersion(
         opts.parentOpts.changelog,
+      )
+  command "show":
+    help "Show the latest X entries of the CHANGELOG"
+    option("-N", "--number", default = some("1"), help = "Number of entries to show")
+    run:
+      echoOut show(
+        opts.parentOpts.changelog,
+        opts.number.parseInt(),
       )
   command "add":
     help "Add a new changelog entry."
@@ -285,6 +323,10 @@ var parser = newParser("changer"):
 when defined(testmode):
   proc runChanger*(args: varargs[string]) =
     parser.run(toSeq(args))
+  
+  proc runChangerOutput*(args: varargs[string]): string =
+    runChanger(args)
+    result = lastStdout() & lastStderr()
 
 when isMainModule:
   parser.run()

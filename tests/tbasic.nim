@@ -66,6 +66,29 @@ update_package_json = true
     let guts = readFile("package.json").parseJson
     check guts["version"].getStr() == "0.1.0"
 
+test "show":
+  tmpdir:
+    runChanger "init"
+    writeFile("changes"/"fix-1.md", "thing1")
+    writeFile("changes"/"fix-2.md", "thing2")
+    runChanger "bump"
+    block:
+      let output = runChangerOutput "show"
+      check "thing1" in output
+      check "thing2" in output
+    writeFile("changes"/"fix-3.md", "thing3")
+    runChanger "bump"
+    block:
+      let output = runChangerOutput "show"
+      check "thing3" in output
+      check "thing1" notin output
+      check "thing2" notin output
+    block:
+      let output = runChangerOutput(["show", "--number", "2"])
+      check "thing1" in output
+      check "thing2" in output
+      check "thing3" in output
+
 suite "initial version 0.1.0":
   test "fix":
     tmpdir:
