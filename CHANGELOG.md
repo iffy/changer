@@ -1,3 +1,7 @@
+# v0.8.0 - 2023-07-11
+
+- **NEW:** Added the `show` command to make it easier to show the latest N entries of the changelog
+
 # v0.7.0 - 2021-12-29
 
 - **NEW:** Added `current-version` command.

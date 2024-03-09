@@ -67,6 +67,13 @@ proc incMinor(version: Version): Version =
 proc incPatch(version: Version): Version =
   (version.major, version.minor, version.patch + 1)
 
+proc toChangeType(x: string): ChangeType =
+  parseEnum[ChangeType](x)
+
+proc toChangeType(x: Option[string]): Option[ChangeType] =
+  if x.isSome():
+    return some(x.get().toChangeType())
+
 proc normalizeEntry(x: string, changetype: ChangeType): string =
   result = x.strip().strip(trailing = false, chars = {'-',' '})
   case changetype:
@@ -118,6 +125,18 @@ proc readReplacements(config: TomlValueRef): seq[Replacement] =
     if not r.isNil and r.kind == Array:
       for elem in r.getElems():
         result.add (elem["pattern"].getStr(), elem["replace"].getStr())
+
+type Duplication = tuple
+  path: string
+
+proc readDuplicateDirs(config: TomlValueRef): seq[Duplication] =
+  if config.hasKey("duplicate"):
+    let r = config["duplicate"]
+    if not r.isNil and r.kind == Array:
+      for elem in r.getElems():
+        if elem.hasKey("dst"):
+          let path = elem["dst"].getStr()
+          result.add((path,))
 
 proc slurpChanges(changesdir: string): ChangeData =
   let config = parsetoml.parseFile(changesdir / "config.toml")
@@ -192,26 +211,31 @@ proc sanitizeTitle(x: string): string =
     else:
       discard
 
-proc newChangeLogEntry(changesdir: string) =
+proc newChangeLogEntry(changesdir: string, changeType = none[ChangeType](), message = "") =
   if not changesdir.dirExists:
     echoErr "ERROR: Could not find changes dir: " & changesdir
     quit(1)
-  var changeType = Other
-  echoErr "Change type:" &
-  "\l  [F]ix" &
-  "\l  [N]ew feature" &
-  "\l  [B]reaking change" &
-  "\l  [O]ther (default)" &
-  "\l  ? "
-  var val = stdin.readLine().strip().toLower()
-  case val
-  of "f": changeType = Fix
-  of "n": changeType = New
-  of "b": changeType = Break
-  else: changeType = Other
+  var changeType = block:
+    if changeType.isSome:
+      changeType.get()
+    else:
+      echoErr "Change type:" &
+      "\l  [F]ix" &
+      "\l  [N]ew feature" &
+      "\l  [B]reaking change" &
+      "\l  [O]ther (default)" &
+      "\l  ? "
+      var val = stdin.readLine().strip().toLower()
+      case val
+      of "f": Fix
+      of "n": New
+      of "b": Break
+      else: Other
   
-  echoErr "Describe change (this will show up in the changelog): "
-  var description = stdin.readLine()
+  var description = message
+  while description == "":
+    echoErr "Describe change (this will show up in the changelog): "
+    description = stdin.readLine()
   var title = description.splitWhitespace(3)[0..^2].join(" ").sanitizeTitle()
   title &= "-" & now().format("yyyyMMdd-HHmmss")
   var filename = case changeType
@@ -221,8 +245,18 @@ proc newChangeLogEntry(changesdir: string) =
     of Other: "other-"
   filename &= title & ".md"
   filename = changesdir / filename
-  writeFile(filename, description & "\l")
+  let contents = description & "\l"
+  writeFile(filename, contents)
   echoErr filename
+  # make duplicates
+  let config = parsetoml.parseFile(changesdir / "config.toml")
+  let duplicates = config.readDuplicateDirs()
+  for dst in duplicates:
+    let fullpath = changesdir / dst.path / filename.extractFilename()
+    fullpath.parentdir.createDir()
+    writeFile(fullpath, contents)
+    echoErr "(copy) " & fullpath.relativePath(".")
+
 
 proc bump(changesdir: string, changelogfile: string, nextVersion = "", dryrun = true) =
   let next = prepareNext(changesdir, changelogfile, nextVersion)
@@ -272,6 +306,12 @@ proc initDir(changesdir: string, changelogfile: string) =
     writeFile(config, DEFAULT_CONFIG)
     echoOut "wrote " & config
 
+const type_choices = static:
+  var r: seq[string]
+  for x in low(ChangeType)..high(ChangeType):
+    r.add($x)
+  r
+
 var parser = newParser("changer"):
   help(README)
   option("-d", "--changes-dir", default = some("changes"))
@@ -317,8 +357,12 @@ var parser = newParser("changer"):
       )
   command "add":
     help "Add a new changelog entry."
+    option("-t", "--change-type", choices = type_choices, help = "Type of change")
+    option("-m", "--message", help = "Changelog entry")
     run:
-      newChangeLogEntry(opts.parentOpts.changes_dir)
+      newChangeLogEntry(opts.parentOpts.changes_dir,
+        changeType = opts.change_type_opt.toChangeType(),
+        message = opts.message)
 
 when defined(testmode):
   proc runChanger*(args: varargs[string]) =
