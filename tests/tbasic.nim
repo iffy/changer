@@ -1,9 +1,10 @@
-import unittest
-import os
-import times
-import strutils
-import random
-import json
+import std/json
+import std/os
+import std/random
+import std/strutils
+import std/sequtils
+import std/times
+import std/unittest
 randomize()
 
 import changer
@@ -14,16 +15,28 @@ if dirExists(TMPROOT):
   echo "Deleting old test tmp dir: ", TMPROOT
   removeDir(TMPROOT)
 
+template cd(dirname: string, body: untyped): untyped =
+  block:
+    let
+      originalDir = getCurrentDir().absolutePath()
+    try:
+      createDir(dirname)
+      setCurrentDir(dirname)
+      body
+    finally:
+      setCurrentDir(originalDir)
+
 template tmpdir(body: untyped): untyped =
-  let
-    originalDir = getCurrentDir().absolutePath()
-    dirname = TMPROOT / now().format("YYYYMMddHHmmss") & $rand(100000)
-  createDir(dirname)
-  try:
-    setCurrentDir(dirname)
+  let dirname = TMPROOT / now().format("YYYYMMddHHmmss") & $rand(100000)
+  cd dirname:
     body
-  finally:
-    setCurrentDir(originalDir)
+
+proc listdir(x: string): seq[string] =
+  for x in walkDir(x, relative = true):
+    result.add(x.path)
+
+proc listChangeFiles(root: string): seq[string] =
+  listdir(root).filterIt("-" in it and it.endsWith(".md"))
 
 test "replacements":
   tmpdir:
@@ -93,7 +106,7 @@ suite "initial version 0.1.0":
   test "fix":
     tmpdir:
       runChanger "init"
-      writeFile("changes"/"fix-something.md", "Hi something")
+      runChanger "add", "-t", "fix", "-m", "Hi something"
       runChanger "bump"
       let guts = readFile("CHANGELOG.md")
       check "0.1.0" in guts
@@ -113,3 +126,28 @@ suite "initial version 0.1.0":
       runChanger "bump"
       let guts = readFile("CHANGELOG.md")
       check "0.1.0" in guts
+
+suite "duplicate":
+
+  test "copy":
+    tmpdir:
+      cd "b":
+        runChanger "init"
+      cd "c":
+        runChanger "init"
+      cd "a":
+        runChanger "init"
+        writeFile("changes"/"config.toml", """
+[[duplicate]]
+dst = '../../b/changes'
+
+[[duplicate]]
+dst = '../../c/changes'
+""")
+        runChanger "add", "-t", "other", "-m", "Change 1"
+      let filename = listChangeFiles("a"/"changes")[0]
+      let contents = readFile("a"/"changes"/filename)
+      check readFile("b"/"changes"/filename) == contents
+      check readFile("c"/"changes"/filename) == contents
+
+      
