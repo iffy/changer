@@ -1,3 +1,8 @@
+# v0.9.0 - 2024-03-09
+
+- **NEW:** You can now specify directories to copy changelog entries to with [[duplicate]]
+- **NEW:** You can specify change parameters to `add` command to make it fully non-interactive
+
 # v0.8.0 - 2023-07-11
 
 - **NEW:** Added the `show` command to make it easier to show the latest N entries of the changelog
