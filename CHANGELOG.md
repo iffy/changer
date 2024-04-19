@@ -1,3 +1,7 @@
+# v0.9.1 - 2024-04-19
+
+- **FIX:** Use version of regex that supports Nim 1.2.x
+
 # v0.9.0 - 2024-03-09
 
 - **NEW:** You can now specify directories to copy changelog entries to with [[duplicate]]
