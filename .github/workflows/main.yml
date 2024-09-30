@@ -19,7 +19,7 @@ jobs:
           # - 0.20.2
         os:
         - ubuntu-latest
-        - macOS-latest
+        - macos-13
         - windows-latest
     steps:
     - uses: actions/checkout@v1
